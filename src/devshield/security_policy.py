@@ -85,6 +85,10 @@ def verify_password(password: str, encoded: str) -> bool:
         expected = base64.urlsafe_b64decode(digest64.encode("ascii"))
         if len(salt) != 16 or len(expected) != 32:
             return False
+        # Reject noncanonical base64, including trailing bytes after '=' padding.
+        if (base64.urlsafe_b64encode(salt).decode('ascii') != salt64 or
+                base64.urlsafe_b64encode(expected).decode('ascii') != digest64):
+            return False
         actual = hashlib.pbkdf2_hmac(
             "sha256", password.encode("utf-8"), salt, iterations
         )
