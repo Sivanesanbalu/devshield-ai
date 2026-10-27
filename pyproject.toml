@@ -11,3 +11,5 @@ dependencies = ["cryptography>=42,<47"]
 devshield = "devshield.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
+[tool.setuptools.package-data]
+devshield = ["static/*"]
