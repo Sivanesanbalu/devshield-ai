@@ -91,6 +91,11 @@ def make_handler(store, *, token: str, tenant: str = "demo",
                 # Unavailable DB or audit failure must NEVER yield a quote.
                 return self.respond(503, {"error": "security policy unavailable"})
             if not decision.allowed:
+                if decision.reason == "restricted":
+                    return self.respond(
+                        403, {"error": "client temporarily restricted"},
+                        retry_after=max(1, decision.retry_after),
+                    )
                 return self.respond(
                     429, {"error": "rate limit exceeded"},
                     retry_after=max(1, decision.retry_after),
