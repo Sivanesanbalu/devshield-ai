@@ -50,4 +50,4 @@ jobs:
       - name: Real PostgreSQL integration tests
         env:
           DEVSHIELD_TEST_PG_DSN: postgresql://devshield_ci:devshield_test_only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/devshield_ci
-        run: python -m pytest -q -vv tests/test_postgres_store_integration.py
+        run: python -m pytest -q -vv tests/test_postgres_store_integration.py tests/test_protected_api_postgres_integration.py
