@@ -6,15 +6,19 @@ DevShield investigates software-IP exposure, release signing, client-side revers
 
 ## Release checkpoint — 27 October 2026
 
-- Recovered source snapshot: `devshield-postgres-foundation.zip` from project archive (not yet uploaded to this repository).
-- Locally reproduced regression suite: **285 passed** (2026-10-27; Python pytest).
-- Heuristic source-publication audit: **PASS**, 180 files inspected and no findings. This is **not** a comprehensive credential/security audit.
-- A separate report claims 293 passing tests on a later integrated revision; **that final revision is not present in the recovered source snapshot and has not been independently reproduced**.
-- **The source code has not yet been pushed.** The local project contains 194 tracked files; the GitHub connection used for this checkpoint cannot transfer the local archive directly.
-- No production deployment, live PostgreSQL 18 re-verification, Ghidra/LLM reconstruction benchmark, or security certification is being claimed.
+- Recovered local foundation: `devshield-postgres-foundation.zip`; later 293-test revision **not available**.
+- **287 passing local pytest tests** after an optional PostgreSQL HTTP policy adapter and two fake-backend integration tests were added.
+- Source-publication heuristic scan: **PASS, 183 files checked, zero findings**; not proof that all secrets are absent.
+- A separate milestone report claims 293 tests on a later revision; that revision has **not** been reproduced.
+- **GitHub currently holds checkpoint documentation only.** The complete local source (~197 tracked files) has not been transferred to GitHub via the available connector.
+- **Real PostgreSQL, Ghidra/LLM reconstruction, and production staging have not been executed for this checkpoint.**
 
 ## Verification & next work
 
-See [Phase 7 verification](docs/PHASE7_VERIFICATION.md) for the evidence limits and next release gates. The actual source is required before GitHub CI can validate the runtime.
+- [Phase 7 verification](docs/PHASE7_VERIFICATION.md)
+- [PostgreSQL HTTP adapter progress](docs/PHASE7_POSTGRES_HTTP.md)
+- [Phase 7 tracking issue](https://github.com/Sivanesanbalu/devshield-ai/issues/1)
 
-This repository is public. Do not upload credentials, private signing keys, customer data, production environment files, or database dumps.
+This repository is public. **Do not upload credentials, signing keys, customer data, production environment files, or database dumps.**
+
+**Not production ready.** Passing local tests and static checks are not independent security certification.
