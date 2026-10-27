@@ -42,7 +42,7 @@ def can_access(principal: Principal | None, *, tenant_id: str, permission: str) 
     if not principal.tenant_id or not principal.user_id:
         return False
     return (
-        hmac.compare_digest(principal.tenant_id, tenant_id)
+        hmac.compare_digest(principal.tenant_id.encode('utf-8'), tenant_id.encode('utf-8'))
         and permission in ROLE_PERMISSIONS.get(principal.role, ())
         and permission in PERMISSIONS
     )
