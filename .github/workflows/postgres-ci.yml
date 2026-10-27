@@ -1,0 +1,53 @@
+name: DevShield PostgreSQL Integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/devshield/postgres_store.py"
+      - "tests/test_postgres_store_*.py"
+      - ".github/workflows/postgres-ci.yml"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres-version: ["16", "18"]
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres-version }}
+        env:
+          POSTGRES_DB: devshield_ci
+          POSTGRES_USER: devshield_ci
+          POSTGRES_PASSWORD: devshield_test_only
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U devshield_ci -d devshield_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DEVSHIELD_TEST_PG_DSN: postgresql://devshield_ci:devshield_test_only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/devshield_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package and PostgreSQL test driver
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . "psycopg[binary]>=3.2,<4" pytest
+      - name: Compile Python files
+        run: python -m compileall -q src tests
+      - name: Unit tests (no database)
+        run: python -m pytest -q tests/test_postgres_store_unit.py
+      - name: Real PostgreSQL integration tests
+        run: python -m pytest -q -vv tests/test_postgres_store_integration.py
