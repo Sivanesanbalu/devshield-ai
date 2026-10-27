@@ -18,6 +18,16 @@
 <button type="submit">Apply restriction</button></form>
 <table><thead><tr><th>Client</th><th>Until (UTC)</th><th>Operator</th><th>Action</th></tr></thead>
 <tbody id="restrictions-body"></tbody></table></section>
+<section id="users-panel" class="panel" hidden>
+<h2>Organization accounts</h2>
+<p>Org admins can create users and disable access. Account changes are audited.</p>
+<form id="user-form">
+<label>Username <input id="new-user" maxlength="128" required autocomplete="off"></label>
+<label>Temporary password <input id="new-password" type="password" minlength="12" maxlength="256" required autocomplete="new-password"></label>
+<label>Role <select id="new-role"><option value="analyst">Analyst</option><option value="auditor">Auditor</option><option value="operator">Operator</option><option value="org_admin">Org admin</option></select></label>
+<button type="submit">Create user</button></form>
+<table><thead><tr><th>User</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody id="users-body"></tbody></table>
+</section>
 <section class="panel"><h2>Audit activity</h2><table><thead><tr><th>Actor</th><th>Action</th><th>UTC</th></tr></thead><tbody id="audit"></tbody></table></section></section>
 <p id="notice" role="status" aria-live="polite"></p><footer>Loopback-only demo. Local restrictions only. Not an internet-facing control plane.</footer></main>
 <script src="/assets/console.js" defer></script></body></html>
