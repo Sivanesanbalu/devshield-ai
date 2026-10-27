@@ -34,8 +34,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
-    env:
-      DEVSHIELD_TEST_PG_DSN: postgresql://devshield_ci:devshield_test_only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/devshield_ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -50,4 +48,6 @@ jobs:
       - name: Unit tests (no database)
         run: python -m pytest -q tests/test_postgres_store_unit.py
       - name: Real PostgreSQL integration tests
+        env:
+          DEVSHIELD_TEST_PG_DSN: postgresql://devshield_ci:devshield_test_only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/devshield_ci
         run: python -m pytest -q -vv tests/test_postgres_store_integration.py
