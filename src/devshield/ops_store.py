@@ -237,5 +237,103 @@ class OpsStore:
         except Exception:
             raise PolicyUnavailable("security policy unavailable") from None
 
+    def users(self, principal: Principal):
+        """List only accounts belonging to the authenticated admin's tenant."""
+        enforce(principal, tenant_id=principal.tenant_id, permission="manage_users")
+        try:
+            with self._connection() as conn:
+                rows = conn.execute("""
+                    SELECT user_id, role, active FROM ds_console_user
+                    WHERE tenant_id = %s ORDER BY user_id LIMIT 500
+                """, (principal.tenant_id,)).fetchall()
+            return [{"user": user, "role": role, "active": active}
+                    for user, role, active in rows]
+        except Exception:
+            raise PolicyUnavailable("security policy unavailable") from None
+
+    def create_user(self, principal: Principal, *, user: str,
+                    password: str, role: str) -> bool:
+        enforce(principal, tenant_id=principal.tenant_id, permission="manage_users")
+        _identity(principal.tenant_id, user)
+        if any(ord(ch) < 32 or ord(ch) == 127 for ch in user):
+            raise ValueError("invalid username")
+        if role not in ROLE_PERMISSIONS:
+            raise ValueError("invalid role")
+        if not isinstance(password, str) or not (12 <= len(password) <= 256):
+            raise ValueError("password length must be 12-256 characters")
+        digest = hash_password(password)
+        now = int(time.time())
+        try:
+            with self._connection() as conn:
+                result = conn.execute("""
+                    INSERT INTO ds_console_user
+                        (tenant_id, user_id, password_hash, role)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (tenant_id, user_id) DO NOTHING
+                    RETURNING user_id
+                """, (principal.tenant_id, user, digest, role)).fetchone()
+                if result:
+                    conn.execute("""
+                        INSERT INTO ds_console_audit
+                            (tenant_id, actor_id, action, created_at)
+                        VALUES (%s, %s, %s, %s)
+                    """, (principal.tenant_id, principal.user_id,
+                          "user-created:" + user, now))
+                return result is not None
+        except Exception:
+            raise PolicyUnavailable("security policy unavailable") from None
+
+    def set_user_active(self, principal: Principal, *, user: str,
+                        active: bool) -> bool:
+        """Deactivate/reactivate user; revoke sessions atomically on any change."""
+        enforce(principal, tenant_id=principal.tenant_id, permission="manage_users")
+        _identity(principal.tenant_id, user)
+        if type(active) is not bool:
+            raise ValueError("active must be boolean")
+        if user == principal.user_id and not active:
+            raise ValueError("cannot deactivate own account")
+        tenant = principal.tenant_id
+        now = int(time.time())
+        try:
+            with self._connection() as conn:
+                # Serialize org mutations across processes before last-admin checks.
+                key = _restriction_lock(tenant, "__admin_accounts__")
+                conn.execute("SELECT pg_advisory_xact_lock(%s)", (key,))
+                target = conn.execute("""
+                    SELECT role, active FROM ds_console_user
+                    WHERE tenant_id = %s AND user_id = %s FOR UPDATE
+                """, (tenant, user)).fetchone()
+                if target is None:
+                    return False
+                if target[1] == active:
+                    return True
+                if not active and target[0] == "org_admin":
+                    count = conn.execute("""
+                        SELECT count(*) FROM ds_console_user
+                        WHERE tenant_id = %s AND role = 'org_admin' AND active = TRUE
+                    """, (tenant,)).fetchone()[0]
+                    if count <= 1:
+                        raise ValueError("cannot disable the last active admin")
+                conn.execute("""
+                    UPDATE ds_console_user SET active = %s
+                    WHERE tenant_id = %s AND user_id = %s
+                """, (active, tenant, user))
+                conn.execute("""
+                    DELETE FROM ds_console_session
+                    WHERE tenant_id = %s AND user_id = %s
+                """, (tenant, user))
+                conn.execute("""
+                    INSERT INTO ds_console_audit
+                        (tenant_id, actor_id, action, created_at)
+                    VALUES (%s, %s, %s, %s)
+                """, (tenant, principal.user_id,
+                      ("user-enabled:" if active else "user-disabled:") + user,
+                      now))
+                return True
+        except ValueError:
+            raise
+        except Exception:
+            raise PolicyUnavailable("security policy unavailable") from None
+
     def health(self):
         return self.db.health()
