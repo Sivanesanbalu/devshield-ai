@@ -105,7 +105,7 @@ def make_handler(store, *, csrf_secret=None):
                 except Exception:
                     ok=False
                 return self.reply(200 if ok else 503,{"status":"ok" if ok else "unavailable"})
-            if route not in ("/api/me","/api/metrics","/api/audit"):
+            if route not in ("/api/me","/api/metrics","/api/audit","/api/restrictions"):
                 return self.reply(404,{"error":"not found"})
             try:
                 token,principal=self.identity()
@@ -114,10 +114,12 @@ def make_handler(store, *, csrf_secret=None):
                 if route=="/api/me":
                     return self.reply(200,dict(tenant=principal.tenant_id,user=principal.user_id,
                                                role=principal.role,csrf=self.csrf(token)))
-                perm="view_metrics" if route=="/api/metrics" else "view_audit"
+                perm=("manage_restrictions" if route=="/api/restrictions" else
+                      "view_metrics" if route=="/api/metrics" else "view_audit")
                 if not can_access(principal,tenant_id=principal.tenant_id,permission=perm):
                     return self.reply(403,{"error":"forbidden"})
                 result=(store.metrics(principal.tenant_id) if route=="/api/metrics"
+                        else store.restrictions(principal) if route=="/api/restrictions"
                         else store.audit(principal.tenant_id))
                 return self.reply(200,result)
             except Exception:
@@ -125,7 +127,8 @@ def make_handler(store, *, csrf_secret=None):
 
         def do_POST(self):
             route=urlsplit(self.path).path
-            if route not in ("/api/login","/api/logout"):
+            if route not in ("/api/login","/api/logout",
+                             "/api/restrictions","/api/restrictions/revoke"):
                 return self.reply(404,{"error":"not found"})
             if not self.valid_origin():
                 return self.reply(403,{"error":"origin rejected"})
@@ -153,6 +156,23 @@ def make_handler(store, *, csrf_secret=None):
                 supplied=self.headers.get("X-CSRF-Token","")
                 if not hmac.compare_digest(supplied,self.csrf(token)):
                     return self.reply(403,{"error":"csrf rejected"})
+                if route in ("/api/restrictions", "/api/restrictions/revoke"):
+                    if not can_access(principal, tenant_id=principal.tenant_id,
+                                      permission="manage_restrictions"):
+                        return self.reply(403, {"error":"forbidden"})
+                    try:
+                        data = self.parse_json()
+                        subject = data.get("subject")
+                        if route == "/api/restrictions":
+                            result = store.restrict(principal, subject=subject,
+                                                    minutes=data.get("minutes"))
+                            return self.reply(200, result)
+                        revoked = store.revoke_restriction(principal, subject=subject)
+                        return self.reply(200, {"revoked": revoked})
+                    except ValueError:
+                        return self.reply(400, {"error":"invalid restriction request"})
+                    except PermissionError:
+                        return self.reply(403, {"error":"forbidden"})
                 store.logout(token,principal)
                 return self.reply(200,{"status":"signed out"},
                                   f"{COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
