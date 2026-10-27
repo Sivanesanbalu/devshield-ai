@@ -105,7 +105,7 @@ def make_handler(store, *, csrf_secret=None):
                 except Exception:
                     ok=False
                 return self.reply(200 if ok else 503,{"status":"ok" if ok else "unavailable"})
-            if route not in ("/api/me","/api/metrics","/api/audit","/api/restrictions"):
+            if route not in ("/api/me","/api/metrics","/api/audit","/api/restrictions","/api/users"):
                 return self.reply(404,{"error":"not found"})
             try:
                 token,principal=self.identity()
@@ -114,12 +114,14 @@ def make_handler(store, *, csrf_secret=None):
                 if route=="/api/me":
                     return self.reply(200,dict(tenant=principal.tenant_id,user=principal.user_id,
                                                role=principal.role,csrf=self.csrf(token)))
-                perm=("manage_restrictions" if route=="/api/restrictions" else
+                perm=("manage_users" if route=="/api/users" else
+                      "manage_restrictions" if route=="/api/restrictions" else
                       "view_metrics" if route=="/api/metrics" else "view_audit")
                 if not can_access(principal,tenant_id=principal.tenant_id,permission=perm):
                     return self.reply(403,{"error":"forbidden"})
                 result=(store.metrics(principal.tenant_id) if route=="/api/metrics"
                         else store.restrictions(principal) if route=="/api/restrictions"
+                        else store.users(principal) if route=="/api/users"
                         else store.audit(principal.tenant_id))
                 return self.reply(200,result)
             except Exception:
@@ -128,7 +130,8 @@ def make_handler(store, *, csrf_secret=None):
         def do_POST(self):
             route=urlsplit(self.path).path
             if route not in ("/api/login","/api/logout",
-                             "/api/restrictions","/api/restrictions/revoke"):
+                             "/api/restrictions","/api/restrictions/revoke",
+                             "/api/users", "/api/users/status"):
                 return self.reply(404,{"error":"not found"})
             if not self.valid_origin():
                 return self.reply(403,{"error":"origin rejected"})
@@ -156,6 +159,27 @@ def make_handler(store, *, csrf_secret=None):
                 supplied=self.headers.get("X-CSRF-Token","")
                 if not hmac.compare_digest(supplied,self.csrf(token)):
                     return self.reply(403,{"error":"csrf rejected"})
+                if route in ("/api/users", "/api/users/status"):
+                    if not can_access(principal, tenant_id=principal.tenant_id,
+                                      permission="manage_users"):
+                        return self.reply(403, {"error":"forbidden"})
+                    try:
+                        data = self.parse_json()
+                        if route == "/api/users":
+                            created = store.create_user(
+                                principal, user=data.get("user"),
+                                password=data.get("password"), role=data.get("role"))
+                            return self.reply(201 if created else 409,
+                                              {"created": created})
+                        updated = store.set_user_active(
+                            principal, user=data.get("user"),
+                            active=data.get("active"))
+                        return self.reply(200 if updated else 404,
+                                          {"updated": updated})
+                    except ValueError:
+                        return self.reply(400, {"error":"invalid user management request"})
+                    except PermissionError:
+                        return self.reply(403, {"error":"forbidden"})
                 if route in ("/api/restrictions", "/api/restrictions/revoke"):
                     if not can_access(principal, tenant_id=principal.tenant_id,
                                       permission="manage_restrictions"):
