@@ -8,6 +8,16 @@
 <label>Password <input id="password" type="password" required autocomplete="current-password"></label>
 <button type="submit">Sign in</button></form></section>
 <section id="dash" hidden><div class="heading"><div><h1>Security operations</h1><p id="identity"></p></div><button id="logout" type="button">Sign out</button></div>
-<div id="metrics" class="cards"></div><section class="panel"><h2>Audit activity</h2><table><thead><tr><th>Actor</th><th>Action</th><th>UTC</th></tr></thead><tbody id="audit"></tbody></table></section></section>
-<p id="notice" role="status" aria-live="polite"></p><footer>Loopback-only demo. No production restriction controls.</footer></main>
+<div id="metrics" class="cards"></div>
+<section id="restrictions-panel" class="panel" hidden>
+<h2>Temporary client restrictions</h2>
+<p>Restrict trusted API client identifiers for up to 24 hours; every action is audited.</p>
+<form id="restrict-form">
+<label>Client identifier <input id="subject" maxlength="128" placeholder="demo-api-client" required></label>
+<label>Minutes <input id="minutes" type="number" min="1" max="1440" value="30" required></label>
+<button type="submit">Apply restriction</button></form>
+<table><thead><tr><th>Client</th><th>Until (UTC)</th><th>Operator</th><th>Action</th></tr></thead>
+<tbody id="restrictions-body"></tbody></table></section>
+<section class="panel"><h2>Audit activity</h2><table><thead><tr><th>Actor</th><th>Action</th><th>UTC</th></tr></thead><tbody id="audit"></tbody></table></section></section>
+<p id="notice" role="status" aria-live="polite"></p><footer>Loopback-only demo. Local restrictions only. Not an internet-facing control plane.</footer></main>
 <script src="/assets/console.js" defer></script></body></html>
