@@ -1,0 +1,57 @@
+name: DevShield Chromium Browser E2E
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/devshield/ops_console.py"
+      - "src/devshield/ops_store.py"
+      - "src/devshield/protected_api.py"
+      - "src/devshield/postgres_store.py"
+      - "src/devshield/static/**"
+      - "tests/test_browser_console_e2e.py"
+      - ".github/workflows/browser-e2e.yml"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  chromium-browser-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres-version: ["16", "18"]
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres-version }}
+        env:
+          POSTGRES_DB: devshield_browser
+          POSTGRES_USER: devshield_browser
+          POSTGRES_PASSWORD: isolated_ci_only
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U devshield_browser -d devshield_browser"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install dependencies
+        run: python -m pip install -e . "psycopg[binary]>=3.2,<4" pytest "playwright>=1.56,<2"
+      - name: Install Chromium and system dependencies
+        run: python -m playwright install --with-deps chromium
+      - name: Compile source and E2E tests
+        run: python -m compileall -q src/devshield tests/test_browser_console_e2e.py
+      - name: Execute actual Chromium browser journeys
+        env:
+          DEVSHIELD_TEST_PG_DSN: postgresql://devshield_browser:isolated_ci_only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/devshield_browser
+        run: python -m pytest -q -vv tests/test_browser_console_e2e.py
