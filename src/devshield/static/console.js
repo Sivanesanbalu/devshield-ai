@@ -17,6 +17,7 @@ async function refresh(){
     const me=await api("/api/me");csrf=me.csrf;
     $("login").hidden=true;$("dash").hidden=false;
     await refreshRestrictions();
+    await refreshUsers();
     $("identity").textContent=me.tenant+" / "+me.user+" · "+me.role;
     $("metrics").replaceChildren();
     try{
@@ -79,6 +80,48 @@ $("restrict-form").addEventListener("submit",async e=>{
     announce("Restriction saved and audited");
     await refreshRestrictions();
   }catch(err){announce(err.message);}
+});
+
+
+async function refreshUsers() {
+  const panel=$("users-panel");
+  try {
+    const users=await api("/api/users");
+    const me=await api("/api/me");
+    panel.hidden=false;
+    const tbody=$("users-body");
+    tbody.replaceChildren();
+    for(const person of users){
+      const row=document.createElement("tr");
+      cell(row,person.user);cell(row,person.role);
+      cell(row,person.active?"Active":"Disabled");
+      const td=document.createElement("td");
+      if(person.user!==me.user || !person.active){
+        const button=document.createElement("button");
+        button.type="button";button.textContent=person.active?"Disable":"Enable";
+        button.addEventListener("click",async()=>{
+          try{
+            await restrictedAction("/api/users/status",
+               {user:person.user,active:!person.active});
+            announce("Account status changed");await refreshUsers();
+          }catch(err){announce(err.message);}
+        });
+        td.appendChild(button);
+      }
+      row.appendChild(td);tbody.appendChild(row);
+    }
+  }catch{panel.hidden=true;}
+}
+$("user-form").addEventListener("submit",async e=>{
+  e.preventDefault();announce("");
+  try{
+    await restrictedAction("/api/users",{
+      user:$("new-user").value,password:$("new-password").value,
+      role:$("new-role").value
+    });
+    $("new-user").value="";$("new-password").value="";
+    announce("User created");await refreshUsers();
+  }catch(err){announce(err.message);$("new-password").value="";}
 });
 
 $("login-form").addEventListener("submit",async e=>{
