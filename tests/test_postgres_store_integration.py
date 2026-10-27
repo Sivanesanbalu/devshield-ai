@@ -51,7 +51,7 @@ def test_migrations_are_repeatable(store):
                 "SELECT version FROM ds_migrations ORDER BY version"
             ).fetchall()
         ]
-    assert versions == [1, 2]
+    assert versions == [1, 2, 4]
 
 
 def test_tenant_isolation_and_audit(store):
