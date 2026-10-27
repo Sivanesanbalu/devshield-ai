@@ -51,11 +51,30 @@ _MIGRATIONS = (
     CREATE INDEX IF NOT EXISTS ds_session_expires
         ON ds_session (expires_at);
     """),
+    (4, """
+    CREATE TABLE IF NOT EXISTS ds_restriction (
+        tenant_ref TEXT NOT NULL,
+        subject_ref TEXT NOT NULL,
+        subject_label TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        created_at BIGINT NOT NULL,
+        expires_at BIGINT NOT NULL,
+        PRIMARY KEY (tenant_ref, subject_ref)
+    );
+    CREATE INDEX IF NOT EXISTS ds_restriction_expires
+        ON ds_restriction (expires_at);
+    """),
 )
 
 
 def _reference(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _restriction_lock(tenant: str, subject: str) -> int:
+    """Stable advisory key shared by quota checks and restriction mutations."""
+    value = hashlib.sha256((tenant + "\x00" + subject).encode("utf-8")).digest()
+    return int.from_bytes(value[:8], byteorder="big", signed=True)
 
 
 def _required(value: str, label: str) -> str:
@@ -135,6 +154,23 @@ class PostgresStore:
         subject_ref = _reference(tenant + "\x00" + principal)
         try:
             with self._connection() as conn:
+                # Serialize policy changes and request admission for the subject.
+                conn.execute("SELECT pg_advisory_xact_lock(%s)",
+                             (_restriction_lock(tenant, principal),))
+                active = conn.execute("""
+                    SELECT expires_at FROM ds_restriction
+                    WHERE tenant_ref = %s AND subject_ref = %s
+                      AND expires_at > %s
+                """, (tenant_ref, subject_ref, stamp)).fetchone()
+                if active:
+                    conn.execute("""
+                        INSERT INTO ds_event
+                            (tenant_ref, subject_ref, event, created_at)
+                        VALUES (%s, %s, 'restricted', %s)
+                    """, (tenant_ref, subject_ref, stamp))
+                    return QuotaDecision(
+                        False, max(1, int(active[0] - stamp)), "restricted"
+                    )
                 row = conn.execute("""
                     INSERT INTO ds_quota (tenant_ref, subject_ref, bucket, used)
                     VALUES (%s, %s, %s, 1)

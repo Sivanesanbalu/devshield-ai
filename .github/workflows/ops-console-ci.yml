@@ -45,8 +45,8 @@ jobs:
       - name: Compile code
         run: python -m compileall -q src tests
       - name: Local HTTP security tests
-        run: python -m pytest -q tests/test_ops_console_http.py
+        run: python -m pytest -q tests/test_ops_console_http.py tests/test_ops_restrictions_http.py
       - name: Real PostgreSQL session and tenant tests
         env:
           DEVSHIELD_TEST_PG_DSN: postgresql://devshield_ci:test_only_password@127.0.0.1:${{ job.services.postgres.ports[5432] }}/devshield_ci
-        run: python -m pytest -q tests/test_ops_store_postgres.py
+        run: python -m pytest -q tests/test_ops_store_postgres.py tests/test_restriction_postgres.py

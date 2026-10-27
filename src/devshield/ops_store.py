@@ -4,8 +4,8 @@ import hashlib
 import secrets
 import time
 
-from devshield.postgres_store import PolicyUnavailable, PostgresStore
-from devshield.security_policy import Principal, ROLE_PERMISSIONS, hash_password, verify_password
+from devshield.postgres_store import PolicyUnavailable, PostgresStore, _reference, _restriction_lock
+from devshield.security_policy import Principal, ROLE_PERMISSIONS, enforce, hash_password, verify_password
 
 OPS_MIGRATION = """
 CREATE TABLE IF NOT EXISTS ds_console_user (
@@ -153,6 +153,87 @@ class OpsStore:
                  WHERE tenant_id=%s ORDER BY id DESC LIMIT 50
                 """,(tenant,)).fetchall()
             return [dict(actor=a,action=b,timestamp=c) for a,b,c in rows]
+        except Exception:
+            raise PolicyUnavailable("security policy unavailable") from None
+
+    @staticmethod
+    def _valid_subject(subject):
+        if (not isinstance(subject, str) or not 1 <= len(subject) <= 128
+                or subject != subject.strip() or any(ord(c) < 32 for c in subject)):
+            raise ValueError("invalid client identifier")
+        return subject
+
+    def restrict(self, principal: Principal, *, subject: str, minutes: int):
+        """Add/extend a temporary restriction and audit it in one transaction."""
+        enforce(principal, tenant_id=principal.tenant_id, permission="manage_restrictions")
+        self._valid_subject(subject)
+        if type(minutes) is not int or not (1 <= minutes <= 1440):
+            raise ValueError("duration must be between 1 and 1440 minutes")
+        now = int(time.time())
+        expires = now + minutes * 60
+        tenant = principal.tenant_id
+        try:
+            with self._connection() as conn:
+                conn.execute("SELECT pg_advisory_xact_lock(%s)",
+                             (_restriction_lock(tenant, subject),))
+                conn.execute("""
+                    INSERT INTO ds_restriction
+                        (tenant_ref, subject_ref, subject_label,
+                         created_by, created_at, expires_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (tenant_ref, subject_ref)
+                    DO UPDATE SET subject_label = EXCLUDED.subject_label,
+                        created_by = EXCLUDED.created_by,
+                        created_at = EXCLUDED.created_at,
+                        expires_at = EXCLUDED.expires_at
+                """, (_reference(tenant), _reference(tenant + "\x00" + subject),
+                      subject, principal.user_id, now, expires))
+                conn.execute("""
+                    INSERT INTO ds_console_audit(tenant_id, actor_id, action, created_at)
+                    VALUES (%s, %s, %s, %s)
+                """, (tenant, principal.user_id, "restrict:" + subject, now))
+            return {"subject": subject, "expires_at": expires}
+        except Exception:
+            raise PolicyUnavailable("security policy unavailable") from None
+
+    def revoke_restriction(self, principal: Principal, *, subject: str) -> bool:
+        enforce(principal, tenant_id=principal.tenant_id, permission="manage_restrictions")
+        self._valid_subject(subject)
+        now = int(time.time())
+        tenant = principal.tenant_id
+        try:
+            with self._connection() as conn:
+                conn.execute("SELECT pg_advisory_xact_lock(%s)",
+                             (_restriction_lock(tenant, subject),))
+                deleted = conn.execute("""
+                    DELETE FROM ds_restriction
+                    WHERE tenant_ref = %s AND subject_ref = %s
+                    RETURNING subject_ref
+                """, (_reference(tenant),
+                      _reference(tenant + "\x00" + subject))).fetchone()
+                if deleted:
+                    conn.execute("""
+                        INSERT INTO ds_console_audit
+                            (tenant_id, actor_id, action, created_at)
+                        VALUES (%s, %s, %s, %s)
+                    """, (tenant, principal.user_id, "unrestrict:" + subject, now))
+            return deleted is not None
+        except Exception:
+            raise PolicyUnavailable("security policy unavailable") from None
+
+    def restrictions(self, principal: Principal):
+        enforce(principal, tenant_id=principal.tenant_id, permission="manage_restrictions")
+        try:
+            with self._connection() as conn:
+                rows = conn.execute("""
+                    SELECT subject_label, created_by, expires_at
+                    FROM ds_restriction
+                    WHERE tenant_ref = %s AND expires_at > %s
+                    ORDER BY expires_at ASC LIMIT 100
+                """, (_reference(principal.tenant_id), int(time.time()))).fetchall()
+            return [{"subject": subject, "created_by": creator,
+                     "expires_at": expires}
+                    for subject, creator, expires in rows]
         except Exception:
             raise PolicyUnavailable("security policy unavailable") from None
 

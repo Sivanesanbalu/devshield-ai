@@ -123,3 +123,14 @@ def test_invalid_request_is_not_processed(payload):
 def test_empty_secret_is_rejected_at_startup():
     with pytest.raises(ValueError):
         make_handler(FakeStore(), token="short")
+
+
+def test_restricted_client_returns_403_with_retry_after():
+    class RestrictedStore(FakeStore):
+        def check_quota(self, tenant, principal, *, limit, window_seconds):
+            return QuotaDecision(False, 60, "restricted")
+    with api(RestrictedStore()) as base:
+        status, data, headers = request(base)
+        assert status == 403
+        assert data == {"error": "client temporarily restricted"}
+        assert headers["Retry-After"] == "60"
