@@ -13,18 +13,19 @@ const EXTENSIONS = new Set([
   '.hpp','.ipynb'
 ]);
 const BASENAMES = new Set(['Dockerfile','Makefile','.npmrc','.pypirc']);
-const SECRET_LABEL =
-  '(?:api[_-]?key|client[_-]?secret|secret[_-]?key|access[_-]?token|database[_-]?password|db[_-]?password|password)';
 const RULES = [
-  {rule:'DS001',severity:'critical',message:'Private key material',pattern:/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/},
-  {rule:'DS002',severity:'high',message:'AWS access key identifier',pattern:/(?<![A-Z0-9])(?:AKIA|ASIA)[A-Z0-9]{16}(?![A-Z0-9])/},
+  {rule:'DS001',severity:'critical',message:'Private key material',
+    pattern:/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/},
+  {rule:'DS002',severity:'high',message:'AWS access key identifier',
+    pattern:/(?<![A-Z0-9])(?:AKIA|ASIA)[A-Z0-9]{16}(?![A-Z0-9])/},
   {rule:'DS003',severity:'high',message:'Potential embedded secret',
-    pattern:new RegExp('(?<![A-Za-z0-9_])["\\\']?' + SECRET_LABEL + '["\\\']?\\s*[:=]\\s*(?:"[^"\\r\\n]{12,}"|\\\'[^\\\'\\r\\n]{12,}\\\')','i')},
-  {rule:'DS004',severity:'medium',message:'Debug flag enabled',pattern:/\b(?:debuggable|debug)\s*[:=]\s*["']?true\b/i},
+    pattern:/(?<![A-Za-z0-9_])["']?(?:api[_-]?key|client[_-]?secret|secret[_-]?key|access[_-]?token|database[_-]?password|db[_-]?password|password)["']?\s*[:=]\s*(?:"[^"\r\n]{12,}"|'[^'\r\n]{12,}')/i},
+  {rule:'DS004',severity:'medium',message:'Debug flag enabled',
+    pattern:/\b(?:debuggable|debug)\s*[:=]\s*["']?true\b/i},
   {rule:'DS005',severity:'medium',message:'Potential client-side license bypass risk',
     pattern:/\b(?:license_valid|is_licensed|is_premium)\s*[:=]\s*(?:true|false)\b/i},
   {rule:'DS006',severity:'high',message:'Potential unquoted secret assignment',
-    pattern:new RegExp('^\\s*(?:export\\s+)?' + SECRET_LABEL + '\\s*[:=]\\s*[A-Za-z0-9][A-Za-z0-9_+./=:@-]{11,}\\s*(?:#.*)?$','i')}
+    pattern:/^\s*(?:export\s+)?(?:api[_-]?key|client[_-]?secret|secret[_-]?key|access[_-]?token|database[_-]?password|db[_-]?password|password)\s*[:=]\s*[A-Za-z0-9][A-Za-z0-9_+./=:@-]{11,}\s*(?:#.*)?$/i}
 ];
 
 export const SAMPLE_FILES = Object.freeze([
