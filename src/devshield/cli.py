@@ -12,6 +12,8 @@ def main(argv=None):
     s = sub.add_parser("scan", help="Scan local source for exposure indicators")
     s.add_argument("path", nargs="?", default=".")
     s.add_argument("--fail-on", choices=["none", *SEVERITY], default="high")
+    s.add_argument("--require-complete", action="store_true",
+                   help="Fail if zero files were scanned or eligible files were skipped")
     e = sub.add_parser("exposure-scan", help="Inspect release binary for exposure markers")
     e.add_argument("path")
     e.add_argument("--fail-on", choices=["none", *SEVERITY], default="high")
@@ -37,6 +39,9 @@ def main(argv=None):
             report = verify_manifest(Path(args.path), json.loads(Path(args.manifest).read_text(encoding="utf-8")))
             findings = []
         print(json.dumps(report, indent=2))
+        if args.command == "scan" and args.require_complete:
+            if report["files_scanned"] == 0 or report["coverage"]["skipped_files"]:
+                return 3
         if args.command == "verify":
             return 0 if report["verified"] else 1
         if hasattr(args, "fail_on") and args.fail_on != "none":
