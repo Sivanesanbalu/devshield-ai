@@ -14,6 +14,7 @@ DevShield is an authorized, local-first research project for software-IP exposur
 | HTTP protected API demonstration | [protected_api.py](src/devshield/protected_api.py) |
 | Real DB concurrency and API tests | [tests](tests/) |
 | CI (Python 3.10/3.12, PostgreSQL 16/18) | [.github/workflows](.github/workflows/) |
+| Local VS Code scan integration (review pending) | [vscode-extension](vscode-extension/) |
 
 ### Run the scanner
 
@@ -38,15 +39,15 @@ Never reuse demo credentials. Do not run against a production database without a
 
 - [Python 3.10 and 3.12 foundation, RBAC and HTTP checks](https://github.com/Sivanesanbalu/devshield-ai/actions/runs/40539962250) — passed.
 - [Real PostgreSQL 16 and 18 quota/session concurrency, migrations and isolation](https://github.com/Sivanesanbalu/devshield-ai/actions/runs/40539120772) — passed.
-- The live database-backed HTTP E2E checks were added later and require their own completed successful CI run; **do not assume pass** until visible in Actions.
+- [Real Chromium browser journeys on PostgreSQL 16/18](https://github.com/Sivanesanbalu/devshield-ai/actions/runs/40549623801) — passed on 2026-10-27.
 - CI results are from disposable test services, not a deployed production environment.
 
 ## Remaining release gates
 
 1. The **complete previously recovered local 197-file source** is **not yet in GitHub**. This repository has the working scanner foundation and new PostgreSQL/authorization/API modules, not all historical implementation.
 2. The separately reported **293-test final source** has not been recovered or reproduced.
-3. The security primitives are not yet integrated into a full authenticated management console, organization/user database, or production service.
-4. Real browser E2E, authorized Ghidra/AI reconstruction evidence, penetration review, secrets management, staging, monitoring, backups and recovery all remain.
+3. A **loopback-only**, PostgreSQL-backed authenticated operations console is committed and browser-tested, but production SSO/MFA, login throttling, TLS deployment and independent security assessment remain.
+4. Real Chromium browser E2E passed in disposable CI. Authorized Ghidra/AI reconstruction evidence, penetration review, secrets management, staging, monitoring, backups and recovery still remain.
 5. Public source requires ongoing code, dependency, secret and legal/licensing review. Production release is **not approved**.
 
-[Phase 7 verification and gaps](docs/PHASE7_VERIFICATION.md) · [PostgreSQL integration notes](docs/PHASE7_POSTGRES_HTTP.md) · [Release-gate issue #1](https://github.com/Sivanesanbalu/devshield-ai/issues/1)
+[Phase 7 verification and gaps](docs/PHASE7_VERIFICATION.md) · [PostgreSQL integration notes](docs/PHASE7_POSTGRES_HTTP.md) · [Current release roadmap](docs/DEVSHIELD_RELEASE_ROADMAP.md) · [Release-gate issue #1](https://github.com/Sivanesanbalu/devshield-ai/issues/1)
