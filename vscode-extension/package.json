@@ -1,0 +1,44 @@
+{
+  "name": "devshield-security",
+  "displayName": "DevShield Security",
+  "description": "Run local DevShield security scans and view findings in VS Code Problems.",
+  "version": "0.1.0",
+  "private": true,
+  "publisher": "devshield-local",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Linters", "Other"],
+  "main": "./extension.js",
+  "activationEvents": ["onCommand:devshield.scanWorkspace"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "devshield.scanWorkspace",
+        "title": "DevShield: Scan Workspace",
+        "category": "DevShield"
+      }
+    ],
+    "configuration": {
+      "title": "DevShield",
+      "properties": {
+        "devshield.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Python executable with the devshield-security package installed. Executed without a shell."
+        },
+        "devshield.scanTimeoutSeconds": {
+          "type": "integer",
+          "default": 30,
+          "minimum": 5,
+          "maximum": 120,
+          "description": "Maximum time allowed for a single workspace-folder scan."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "check": "node --check extension.js && node --check diagnostics.js",
+    "test": "node --test test/*.test.js"
+  }
+}

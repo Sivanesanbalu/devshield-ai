@@ -1,0 +1,35 @@
+name: DevShield VS Code Extension CI
+
+on:
+  pull_request:
+    paths:
+      - "vscode-extension/**"
+      - ".github/workflows/vscode-extension-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "vscode-extension/**"
+      - ".github/workflows/vscode-extension-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  vscode-extension:
+    name: Validate local VS Code integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install local DevShield Python scanner
+        run: python -m pip install -e .
+      - name: Check JavaScript syntax
+        run: npm --prefix vscode-extension run check
+      - name: Test redacted diagnostics and path safety
+        run: npm --prefix vscode-extension test
