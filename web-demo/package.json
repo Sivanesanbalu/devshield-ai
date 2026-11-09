@@ -1,0 +1,11 @@
+{
+  "name": "devshield-browser-preview",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Local-only DevShield scanner preview, not production API protection",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check scanner.js && node --check app.js"
+  }
+}
