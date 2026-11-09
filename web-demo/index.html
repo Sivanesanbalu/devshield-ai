@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080d16">
+  <meta name="description" content="DevShield live local security scanner preview. Test synthetic examples or scan selected source files entirely in your own browser.">
+  <title>DevShield · Local Security Lab</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="DevShield home">
+      <span class="brandmark" aria-hidden="true">D<span>◆</span></span>
+      <span>DEV<span class="brand-soft">SHIELD</span><small>SECURITY LAB</small></span>
+    </a>
+    <div class="top-actions">
+      <span class="status-dot"><i></i> Browser-only preview</span>
+      <a class="repo-link" href="https://github.com/Sivanesanbalu/devshield-ai" target="_blank" rel="noopener noreferrer">View source <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="eyebrow"><span class="spark"></span> DEVSHIELD / INTERACTIVE SECURITY LAB <span class="vlabel">PRE-PRODUCTION</span></div>
+      <h1 id="hero-title">Find exposure.<br><em>Before the release.</em></h1>
+      <p class="intro">Inspect selected code for common leaked secrets, debug flags and client-side license patterns. See redacted findings with a real, working browser-side scanner.</p>
+      <div class="trust-row">
+        <span>◎ Runs on your device</span><span>◎ No file upload</span><span>◎ No account required</span>
+      </div>
+    </section>
+
+    <section id="workspace" class="workspace" aria-label="Scanner workspace">
+      <div class="panel scan-panel">
+        <div class="panel-title">
+          <div><div class="overline">01 / SOURCE INSPECTION</div><h2>Start a scan</h2></div>
+          <span class="chip chip-outline">Local execution</span>
+        </div>
+        <p class="muted">Try the synthetic files first, or select your own source code. File content is processed in this tab and is never sent to the server.</p>
+        <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Choose source files to scan">
+          <div class="drop-icon" aria-hidden="true">⌗</div>
+          <strong>Drop files here to inspect</strong>
+          <span>or choose a source folder or individual files</span>
+          <div class="choose-row">
+            <button class="btn btn-secondary" id="choose-files" type="button">Choose files</button>
+            <button class="btn btn-secondary" id="choose-folder" type="button">Choose folder</button>
+          </div>
+          <input id="file-picker" type="file" multiple hidden>
+          <input id="folder-picker" type="file" multiple webkitdirectory directory hidden>
+        </div>
+        <div class="divider-line"><span>OR TEST THE DETECTION ENGINE</span></div>
+        <button class="btn btn-primary btn-wide" id="run-demo" type="button"><span aria-hidden="true">⚡</span> Run safe demo scan <span aria-hidden="true">↗</span></button>
+        <p class="microcopy">Uses synthetic secrets only. The demo does not contain genuine credentials.</p>
+        <div class="notice"><strong>Privacy by design.</strong> This preview has no file-upload API, network submission, cloud analysis or data storage. Avoid opening sensitive projects on devices you do not trust.</div>
+        <details class="limits">
+          <summary>What does the scanner cover?</summary>
+          <p>Heuristic patterns for selected keys, credentials, debug flags and license flags. Supported text extensions include Python, JavaScript, TypeScript, JSON, YAML, Markdown, TOML and <code>.env</code>. Files over 1 MB, unsupported files and uncertain encodings are reported as skipped. It does not scan Git history, dependencies, vulnerabilities or binaries.</p>
+        </details>
+      </div>
+      <div class="panel results-panel" id="results-panel">
+        <div class="panel-title">
+          <div><div class="overline">02 / FINDINGS & COVERAGE</div><h2>Scan report</h2></div>
+          <span class="chip" id="scan-badge"><span class="tiny-dot"></span> Ready to scan</span>
+        </div>
+        <div class="metrics">
+          <div class="metric"><span>Files scanned</span><strong id="metric-files">—</strong></div>
+          <div class="metric"><span>Findings</span><strong id="metric-findings">—</strong></div>
+          <div class="metric"><span>Skipped files</span><strong id="metric-skipped">—</strong></div>
+        </div>
+        <div id="report-placeholder" class="placeholder" role="status">
+          <div class="orbit" aria-hidden="true"><span>◇</span></div>
+          <h3>Your security report appears here</h3>
+          <p>Run the example scan or choose your files to inspect redacted findings and coverage gaps.</p>
+        </div>
+        <div id="report-output" hidden>
+          <div class="report-heading">
+            <h3>Detections <span id="finding-total">0</span></h3>
+            <button id="export-report" class="text-button" type="button">Export JSON ↓</button>
+          </div>
+          <div id="finding-list" class="finding-list" role="list"></div>
+          <div class="coverage-wrap">
+            <div class="report-heading"><h3>Scan coverage</h3><span id="coverage-status" class="coverage-state">—</span></div>
+            <p class="muted small" id="coverage-desc"></p>
+            <div id="skipped-list" class="skipped-list"></div>
+          </div>
+          <div class="report-footer" id="report-footer"></div>
+          <button id="clear-results" class="btn btn-secondary" type="button">Clear report</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="bottom-grid" aria-label="Security context">
+      <article class="info-card"><div class="icon-square">⌕</div><h3>Detection, not magic</h3><p>This lab flags known patterns. A clean scan is not evidence that an app is secure, or that every secret was found.</p></article>
+      <article class="info-card"><div class="icon-square">⬡</div><h3>Protection needs enforcement</h3><p>DevShield's API quota and restriction examples are separate, loopback-only components. They are not exposed here.</p></article>
+      <article class="info-card"><div class="icon-square">◇</div><h3>Packages can be inspected</h3><p>A Python package or compiled binary can be reverse engineered. Keep important secrets and business decisions server-side.</p></article>
+    </section>
+    <footer><span>DEVSHIELD / EXPERIMENTAL</span><span>Local scanning preview · No production security guarantee</span><a href="https://github.com/Sivanesanbalu/devshield-ai" target="_blank" rel="noopener noreferrer">GitHub ↗</a></footer>
+  </main>
+</body>
+</html>
